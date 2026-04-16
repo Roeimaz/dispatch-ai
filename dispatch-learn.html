@@ -315,7 +315,7 @@ TECHNICIANS:
 ${techStr}
 
 STRICT DISPATCH RULES — follow exactly:
-1. LOCKOUT (car lockout, house lockout, locked out) → ONLY assign: Tomer, Gilad, Muriel, Kobi, or Slava. NEVER Lior or Ofer for lockout.
+1. LOCKOUT (car lockout, house lockout, locked out, L/O, House L/O, Car L/O) → ONLY assign: Tomer, Gilad, Muriel, Kobi, or Slava. NEVER Lior or Ofer for lockout.
 2. CAR KEY German vehicle (BMW, Mercedes, VW, Volkswagen, Audi, Porsche, Jetta, Passat, Golf, Tiguan) → Pini or Claudio first
 3. CAR KEY all other vehicles → Lior or Ofer first; Daniel only if both busy
 4. LOCK CHANGE / rekey / deadbolt → Tomer, Gilad, Muriel, Kobi, or Slava
@@ -330,7 +330,7 @@ Extract fields carefully:
 - phone: 10-digit US number only (e.g. 7024216148). Do NOT include zip codes (5 digits) in the phone field.
 - address: full street address including unit/apt if present
 - vehicle: year + make + model (e.g. "2018 Kia Sorento")
-- jobTypeLabel: specific job name (e.g. "Ignition Fix", "Car Lockout", "Lock Change") — never just "Job"
+- jobTypeLabel: specific job name (e.g. "Ignition Fix", "Car Lockout", "House Lockout", "Lock Change", "Car Key") — never just "Job". L/O = Lockout.
 
 Return ONLY valid JSON (no markdown, no extra text). Do NOT include dispatchMsg. Do NOT add notes or recommendations:
 {"msgType":"new_lead|update|closure","jobType":"car_key|car_key_german|lockout|lock|unknown","jobTypeLabel":"short label","address":"or null","phone":"or null","vehicle":"or null","customerName":"or null","amount":"price if closure else null","notes":"","primaryTech":"name","primaryReason":"max 4 words","backupTechs":["name1","name2"],"urgency":"high|normal"}`;
@@ -406,7 +406,7 @@ function fallback(text) {
   const hasUpdate = /triple a|on the way|she will|he will|waiting|customer said/i.test(text);
   const isGerman  = GERMAN.some(b=>l.includes(b));
   const isCar     = /car key|auto|new key|\bkey\b/i.test(text);
-  const isLockout = /car\s*lock\s*out|house\s*lock\s*out|lockout|lock\s*out|locked\s*out/i.test(text);
+  const isLockout = /car\s*lock\s*out|house\s*lock\s*out|lockout|lock\s*out|locked\s*out|\bl\/o\b|house\s*l\/o|car\s*l\/o/i.test(text);
   const isLock    = /change lock|rekey|deadbolt|lock change/i.test(text);
 
   const hasDecline = /not interested|went down to|will call back|too expensive|she will wait|he will wait|will wait|called back|no answer|no response|customer declined|declined|cancelled|cancel/i.test(text);
@@ -418,7 +418,9 @@ function fallback(text) {
   const phAll = text.match(/\b\d[\d\-\s]{8,12}\d\b/g) || [];
   const phFiltered = phAll.filter(p => p.replace(/[^\d]/g,'').length >= 10).map(p => p.trim());
   const ph = phFiltered.length ? [phFiltered[0]] : null;
-  const ad = text.match(/\d+\s+[\w\s]+(?:,[\w\s,]+){1,3}/);
+  // Extract address: number + street, with optional building/unit
+  const adRaw = text.match(/\d+\s+[\w\s\.]+(?:(?:bldng?|apt|unit|#|ste|suite)[\s\w\d]+)?(?:,[\w\s,]+)*/i);
+  const ad = adRaw ? [adRaw[0].trim()] : null;
   const lbl = {car_key:'Car Key',car_key_german:'Car Key (German)',lockout:'Lockout',lock:'Lock Change',unknown:'Job'};
 
   return {msgType, jobType, jobTypeLabel:lbl[jobType],
