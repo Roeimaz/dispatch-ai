@@ -503,17 +503,12 @@ function fallback(text) {
   const phAll = text.match(/\b\d[\d\-\s]{8,12}\d\b/g) || [];
   const phFiltered = phAll.filter(p => p.replace(/[^\d]/g,'').length >= 10).map(p => p.trim());
   const ph = phFiltered.length ? [phFiltered[0]] : null;
-  // Extract address: number + street, stop before phone numbers
-  const textLines = text.split('\n');
-  const adLines = [];
-  for(let li=0; li<textLines.length; li++){
-    const clean = textLines[li].trim();
-    if(!clean) break;
-    if(/^[\d\-\(\)\+\s]{7,}$/.test(clean) && clean.replace(/[^\d]/g,'').length >= 7) break;
-    if(/^(house|car|lockout|lock|key|ignition|rekey)/i.test(clean)) break;
-    adLines.push(clean);
-  }
-  const ad = adLines.length ? [adLines.join(', ')] : null;
+  // Extract address: find line with street number pattern anywhere in text
+  var adMatch = text.match(/\d+\s+[A-Za-z][\w\s]+(Dr|St|Ave|Blvd|Rd|Ln|Way|Ct|Pl|Pkwy|Hwy|Cir|Trl)[\w\s,#\.]*(?:,?\s*(?:Las Vegas|Henderson|North Las Vegas|Boulder City)[\w\s,]*)?(?:,?\s*N[Vv][\w\s,]*)?(?:,?\s*\d{5})?/i);
+  // Also try: address after "Address:" label
+  var adLabel = text.match(/[Aa]ddress\s*:\s*([^\n]+)/);
+  var adStr = adLabel ? adLabel[1].trim() : (adMatch ? adMatch[0].trim() : null);
+  var ad = adStr ? [adStr] : null;
   const lbl = {car_key:'Car Key',car_key_german:'Car Key (German)',lockout:'Lockout',lock:'Lock Change',unknown:'Job'};
 
   return {msgType, jobType, jobTypeLabel:lbl[jobType],
