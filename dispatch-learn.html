@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dispatch AI</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --bg:#0d0f12; --card:#141720; --card2:#1a1f2e; --border:#242938;
+  --accent:#4f8ef7; --gold:#f5c842; --green:#2dd87a; --red:#f05a5a;
+  --orange:#ff8c42; --purple:#a78bfa; --text:#eef0f6; --sub:#8891a8;
+  --mono:'JetBrains Mono',monospace; --sans:'Rubik',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:80px}
+.nav{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
+.nav-title{font-size:17px;font-weight:700;color:var(--accent);letter-spacing:-.3px}
+.nav-badge{font-family:var(--mono);font-size:11px;background:var(--card2);border:1px solid var(--border);padding:4px 10px;border-radius:20px;color:var(--sub)}
+.nav-badge span{color:var(--gold);font-weight:500}
+.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:57px;z-index:40}
+.tab{flex:1;padding:12px 4px;text-align:center;font-size:12px;font-weight:600;color:var(--sub);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.section{display:none;padding:16px}
+.section.active{display:block}
+.input-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px}
+.input-card-header{padding:12px 16px;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--mono);color:var(--sub);text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:8px}
+.dot-pulse{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:dp 2s infinite}
+@keyframes dp{0%,100%{opacity:1}50%{opacity:.3}}
+textarea{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.7;padding:14px 16px;resize:none;min-height:130px}
+textarea:focus{outline:none}
+textarea::placeholder{color:var(--border)}
+.btn{width:100%;padding:15px;border:none;border-radius:12px;font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:active{transform:scale(.97)}
+.btn-primary:disabled{opacity:.5;pointer-events:none}
+.btn-green{background:var(--green);color:#000}
+.btn-green:active{transform:scale(.97)}
+.result-card{background:var(--card2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px;display:none;margin-top:14px}
+.result-card.visible{display:block}
+.result-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.job-badge{font-size:13px;font-weight:700;padding:5px 14px;border-radius:20px;display:inline-flex;align-items:center;gap:6px}
+.job-badge.car{background:#4f8ef722;color:var(--accent);border:1px solid #4f8ef744}
+.job-badge.lock{background:#f5c84222;color:var(--gold);border:1px solid #f5c84244}
+.job-badge.lockout{background:#f05a5a22;color:var(--red);border:1px solid #f05a5a44}
+.job-badge.german{background:#a78bfa22;color:var(--purple);border:1px solid #a78bfa44}
+.job-badge.update{background:#ff8c4222;color:var(--orange);border:1px solid #ff8c4244}
+.job-badge.closure{background:#2dd87a22;color:var(--green);border:1px solid #2dd87a44}
+.urgency-tag{font-size:10px;font-family:var(--mono);color:var(--red);background:#f05a5a15;border:1px solid #f05a5a33;padding:3px 8px;border-radius:10px}
+.result-body{padding:14px 16px}
+.info-row{display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.info-item{flex:1;min-width:120px}
+.info-item.full{flex:0 0 100%}
+.info-label{font-size:10px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.info-val{font-size:13px;font-weight:500;line-height:1.4;word-break:break-word}
+.divider{height:1px;background:var(--border);margin:12px 0}
+.rec-title{font-size:11px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.tech-rec{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:8px;transition:all .15s}
+.tech-rec.best{border-color:#2dd87a55;background:#2dd87a08}
+.tech-rec-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.tech-rec-name{font-size:16px;font-weight:700}
+.tech-avail{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:10px}
+.tech-avail.free{color:var(--green);background:#2dd87a15;border:1px solid #2dd87a33}
+.tech-avail.busy{color:var(--orange);background:#ff8c4215;border:1px solid #ff8c4233}
+.tech-rec-skill{font-size:12px;color:var(--sub);margin-bottom:8px}
+.tech-rec-reason{font-size:12px;color:var(--accent);font-family:var(--mono);background:#4f8ef710;border:1px solid #4f8ef722;padding:5px 10px;border-radius:6px;margin-bottom:10px}
+.tech-rec-btn{width:100%;padding:10px;border-radius:8px;border:none;font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+.tech-rec.best .tech-rec-btn{background:var(--green);color:#000}
+.tech-rec:not(.best) .tech-rec-btn{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.src-label{font-size:11px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.src-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.src-chip{padding:7px 14px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--card);color:var(--sub);cursor:pointer;transition:all .15s}
+.src-chip.selected{background:var(--accent);color:#fff;border-color:var(--accent)}
+.src-chip:active{transform:scale(.95)}
+.msg-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:8px}
+.msg-box-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.msg-lbl{font-size:10px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px}
+.msg-edit-toggle{font-size:12px;color:var(--accent);cursor:pointer;font-family:var(--mono);text-decoration:underline}
+.msg-text{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--text);white-space:pre-wrap;word-break:break-word}
+.msg-ta{width:100%;background:var(--card);border:1px solid var(--accent);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:12px;line-height:1.8;padding:13px;resize:none;min-height:120px;display:none}
+.msg-ta:focus{outline:none}
+.spinner-wrap{display:none;align-items:center;gap:10px;padding:16px;color:var(--sub);font-size:13px;font-family:var(--mono)}
+.spinner-wrap.visible{display:flex}
+.spin{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.job-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;position:relative;overflow:hidden}
+.job-item::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%}
+.job-item.dispatched::before{background:var(--accent)}
+.job-item.done::before{background:var(--green)}
+.job-item.private-job::before{background:var(--purple)}
+.job-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.job-type{font-size:14px;font-weight:700}
+.job-badge-sm{font-size:10px;font-family:var(--mono);padding:3px 10px;border-radius:10px}
+.job-badge-sm.dispatched{color:var(--accent);background:#4f8ef718;border:1px solid #4f8ef733}
+.job-badge-sm.done{color:var(--green);background:#2dd87a18;border:1px solid #2dd87a33}
+.job-meta{font-size:12px;color:var(--sub);font-family:var(--mono);margin-bottom:4px}
+.job-actions{display:flex;gap:8px;margin-top:10px}
+.job-action-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .15s}
+.job-action-btn.done-btn{color:var(--green);border-color:#2dd87a44}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px}
+.stat-num{font-size:28px;font-weight:900;font-family:var(--mono)}
+.stat-label{font-size:11px;color:var(--sub);margin-top:2px}
+.stat-box.a .stat-num{color:var(--accent)}
+.stat-box.g .stat-num{color:var(--green)}
+.stat-box.o .stat-num{color:var(--gold)}
+.stat-box.p .stat-num{color:var(--purple)}
+.tech-list{display:flex;flex-direction:column;gap:8px}
+.tech-row{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all .15s}
+.tech-row:active{background:var(--card2)}
+.tech-row-l{display:flex;align-items:center;gap:10px}
+.tdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.tdot.free{background:var(--green);box-shadow:0 0 6px #2dd87a88}
+.tdot.busy{background:var(--orange)}
+.tdot.dayoff{background:var(--purple)}
+.tstatus.dayoff{color:var(--purple)}
+.tech-row.dayoff-row{opacity:.6;border-color:#a78bfa33}
+.dayoff-badge{font-size:10px;font-family:var(--mono);color:var(--purple);background:#a78bfa15;border:1px solid #a78bfa33;padding:2px 8px;border-radius:8px;margin-top:3px}
+.dayoff-picker{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:8px;display:none}
+.dayoff-picker.open{display:block}
+.dayoff-picker-title{font-size:11px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.dayoff-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.dayoff-btn{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--card);color:var(--sub);cursor:pointer;transition:all .15s}
+.dayoff-btn.sel{background:#a78bfa22;color:var(--purple);border-color:#a78bfa55}
+.dayoff-btn:active{transform:scale(.95)}
+.dayoff-actions{display:flex;gap:8px}
+.dayoff-save{flex:1;padding:8px;border-radius:8px;border:none;background:var(--purple);color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--sans)}
+.dayoff-clear{padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--sub);font-size:13px;cursor:pointer;font-family:var(--sans)}
+.tname{font-size:15px;font-weight:600}
+.tskill{font-size:11px;color:var(--sub)}
+.tstatus{font-size:12px;font-family:var(--mono)}
+.tstatus.free{color:var(--green)}
+.tstatus.busy{color:var(--orange)}
+.priv-row{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;cursor:pointer}
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--border);position:relative;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle.on::after{transform:translateX(-20px)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;padding:12px 24px;border-radius:12px;font-weight:700;font-size:14px;z-index:999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px #2dd87a44}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.sec-title{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1px;font-family:var(--mono);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.empty{text-align:center;padding:48px 20px;color:var(--sub)}
+.mtype-btn{flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--sub);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .15s;text-align:center}
+.mtype-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mtype-btn:active{transform:scale(.95)}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-title">⚡ Dispatch AI</div>
+  <div class="nav-badge">Learned: <span id="learnCount">0</span></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('new',this)">New Lead</button>
+  <button class="tab" onclick="switchTab('jobs',this)">Jobs</button>
+  <button class="tab" onclick="switchTab('techs',this)">Techs</button>
+  <button class="tab" onclick="switchTab('stats',this)">Stats</button>
+</div>
+
+<div class="section active" id="tab-new">
+  <div class="priv-row" onclick="togglePrivate()">
+    <div>
+      <div style="font-size:14px;font-weight:500">Private Lead</div>
+      <div style="font-size:11px;color:var(--sub)">Don't forward closure to any supplier</div>
+    </div>
+    <div class="toggle" id="privToggle"></div>
+  </div>
+  <div class="input-card">
+    <div class="input-card-header"><div class="dot-pulse"></div>Paste message</div>
+    <textarea id="leadInput" placeholder="Paste any message here...&#10;&#10;New lead, tech update, closure — anything."></textarea>
+  </div>
+
+  <div style="margin-bottom:12px">
+    <div style="font-size:11px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Message type — tap if AI gets it wrong</div>
+    <div style="display:flex;gap:8px">
+      <button class="mtype-btn active" id="mt-auto"    onclick="setMsgType('auto',this)">🤖 Auto</button>
+      <button class="mtype-btn"        id="mt-new"     onclick="setMsgType('new_lead',this)">📥 New Lead</button>
+      <button class="mtype-btn"        id="mt-update"  onclick="setMsgType('update',this)">📤 Update</button>
+      <button class="mtype-btn"        id="mt-closure" onclick="setMsgType('closure',this)">✅ Closure</button>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="analyzeLead()" id="analyzeBtn">⚡ Analyze</button>
+  <div class="spinner-wrap" id="spinner"><div class="spin"></div><span>Analyzing...</span></div>
+  <div class="result-card" id="resultCard">
+    <div class="result-header">
+      <div class="job-badge" id="jobBadge"></div>
+      <div class="urgency-tag" id="urgTag" style="display:none">⚠ URGENT</div>
+    </div>
+    <div class="result-body" id="resultBody"></div>
+  </div>
+</div>
+
+<div class="section" id="tab-jobs">
+  <div class="sec-title">Job History</div>
+  <div id="jobsList"></div>
+</div>
+
+<div class="section" id="tab-techs">
+  <div class="sec-title">Technicians — tap to toggle</div>
+  <div class="tech-list" id="techList"></div>
+</div>
+
+<div class="section" id="tab-stats">
+  <div class="sec-title">Overview</div>
+  <div class="stats-grid">
+    <div class="stat-box a"><div class="stat-num" id="s-tot">0</div><div class="stat-label">Total Leads</div></div>
+    <div class="stat-box g"><div class="stat-num" id="s-done">0</div><div class="stat-label">Completed</div></div>
+    <div class="stat-box o"><div class="stat-num" id="s-act">0</div><div class="stat-label">Active</div></div>
+    <div class="stat-box p"><div class="stat-num" id="s-priv">0</div><div class="stat-label">Private</div></div>
+  </div>
+  <div class="sec-title" style="margin-top:8px">Jobs by Technician</div>
+  <div id="techStats"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TECHS = [
+  {id:'lior',    name:'Lior',    skills:['car_key','all'],                              note:'Car keys · General backup',               status:'free'},
+  {id:'ofer',    name:'Ofer',    skills:['car_key'],                                    note:'Car keys',                                status:'free'},
+  {id:'tomer',   name:'Tomer',   skills:['lock','commercial','residential','lockout'],   note:'Locks · Commercial / Residential / Lockout', status:'free'},
+  {id:'gilad',   name:'Gilad',   skills:['lock','commercial','residential','lockout'],   note:'Locks · like Tomer',                      status:'free'},
+  {id:'daniel',  name:'Daniel',  skills:['lock','commercial','residential','car_key'],   note:'Locks + Car keys (last resort for car)',  status:'free'},
+  {id:'muriel',  name:'Muriel',  skills:['lock','commercial','residential','lockout'],   note:'Locks · like Tomer',                      status:'free'},
+  {id:'pini',    name:'Pini',    skills:['car_key_german'],                             note:'German cars only (BMW/Mercedes/VW…)',      status:'free'},
+  {id:'claudio', name:'Claudio', skills:['car_key_german'],                             note:'German cars · like Pini',                 status:'free'},
+  {id:'kobi',    name:'Kobi',    skills:['lock','commercial','residential','lockout'],   note:'Locks · like Tomer',                      status:'free'},
+  {id:'slava',   name:'Slava',   skills:['lock','commercial','residential','lockout'],   note:'Locks · like Tomer',                      status:'free'},
+];
+
+const SUPPLIERS = ['Ben','AGN','IAG','Best Locksmith','Dylan','Pini','NV Locksmith','Hen','Carmon','Eliran California'];
+const GERMAN = ['volkswagen','vw','mercedes','bmw','audi','porsche','jetta','passat','golf','tiguan','sprinter','opel'];
+
+// ── DISPATCH RULES (single source of truth) ──────────────────
+function getRules(jobType) {
+  switch(jobType) {
+    case 'car_key_german': return { primary:['Pini','Claudio'],                          backup:['Lior','Ofer'] };
+    case 'car_key':        return { primary:['Lior','Ofer'],                             backup:['Daniel'] };
+    case 'lockout':        return { primary:['Tomer','Gilad','Muriel','Kobi','Slava'],   backup:['Daniel'] };
+    case 'lock':           return { primary:['Tomer','Gilad','Muriel','Kobi','Slava'],   backup:['Daniel'] };
+    default:               return { primary:['Lior'],                                    backup:['Tomer','Gilad'] };
+  }
+}
+
+function bestTech(jobType) {
+  const {primary, backup} = getRules(jobType);
+  // skip techs on day off or busy, prefer free
+  const free = [...primary,...backup].find(n => {
+    const t = TECHS.find(x=>x.name===n);
+    return t && effectiveStatus(t)==='free';
+  });
+  return { rec: primary[0], backups: [...primary.slice(1),...backup].slice(0,3), suggested: free||primary[0] };
+}
+
+function reasonLabel(jobType) {
+  return {car_key_german:'German vehicle specialist', car_key:'Car key specialist',
+          lockout:'Lockout specialist', lock:'Lock change specialist'}[jobType] || 'General';
+}
+
+// ── STATE ────────────────────────────────────────────────────
+let jobs     = JSON.parse(localStorage.getItem('dp_jobs')  || '[]');
+let learn    = JSON.parse(localStorage.getItem('dp_learn') || '[]');
+let seq      = parseInt(localStorage.getItem('dp_seq')     || '1000');
+let priv     = false;
+let pending  = null;
+
+function save() {
+  localStorage.setItem('dp_jobs',  JSON.stringify(jobs));
+  localStorage.setItem('dp_learn', JSON.stringify(learn));
+  localStorage.setItem('dp_seq',   seq);
+  document.getElementById('learnCount').textContent = learn.length;
+}
+
+// ── TABS ─────────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='jobs')  renderJobs();
+  if(id==='techs') renderTechs();
+  if(id==='stats') renderStats();
+}
+
+function togglePrivate() {
+  priv = !priv;
+  document.getElementById('privToggle').classList.toggle('on', priv);
+}
+
+// ── ANALYZE ──────────────────────────────────────────────────
+async function analyzeLead() {
+  const input = document.getElementById('leadInput').value.trim();
+  if (!input) return showToast('Paste a message first');
+
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('spinner').classList.add('visible');
+  document.getElementById('resultCard').classList.remove('visible');
+
+  const techStr = TECHS.map(t=>{
+    const eff = effectiveStatus(t);
+    const statusLabel = eff==='dayoff'?'DAY OFF': eff==='free'?'AVAILABLE':'BUSY';
+    return `${t.name} [${statusLabel}]: ${t.note}`;
+  }).join('\n');
+
+  const prompt = `You are a dispatch manager for a locksmith company in Las Vegas.
+Analyze the message and return dispatch instructions.
+
+MESSAGE:
+${input}
+
+TECHNICIANS:
+${techStr}
+
+STRICT DISPATCH RULES — follow exactly:
+1. LOCKOUT (car lockout, house lockout, locked out) → ONLY assign: Tomer, Gilad, Muriel, Kobi, or Slava. NEVER Lior or Ofer for lockout.
+2. CAR KEY German vehicle (BMW, Mercedes, VW, Volkswagen, Audi, Porsche, Jetta, Passat, Golf, Tiguan) → Pini or Claudio first
+3. CAR KEY all other vehicles → Lior or Ofer first; Daniel only if both busy
+4. LOCK CHANGE / rekey / deadbolt → Tomer, Gilad, Muriel, Kobi, or Slava
+5. Lior = general backup only when everyone appropriate is busy
+6. Daniel does car keys only as absolute last resort
+7. closure = message has price/Paid/cash/$/parts
+   closure = ONLY if there is actual payment received: "Paid:250", "$170 cash", "150 key and remote" with a dollar amount. "parts" or "bought parts" alone is NEVER a closure
+   update = ANY of these: status from technician, customer declined, "not interested", "went down to [price]", "will call back", "too expensive", "no answer", "cancelled", customer waiting, negotiation result
+   new_lead = only if it's clearly a fresh job request with NO indication of prior contact or negotiation
+
+Extract fields carefully:
+- phone: 10-digit US number only (e.g. 7024216148). Do NOT include zip codes (5 digits) in the phone field.
+- address: full street address including unit/apt if present
+- vehicle: year + make + model (e.g. "2018 Kia Sorento")
+- jobTypeLabel: specific job name (e.g. "Ignition Fix", "Car Lockout", "Lock Change") — never just "Job"
+
+Return ONLY valid JSON (no markdown, no extra text). Do NOT include dispatchMsg. Do NOT add notes or recommendations:
+{"msgType":"new_lead|update|closure","jobType":"car_key|car_key_german|lockout|lock|unknown","jobTypeLabel":"short label","address":"or null","phone":"or null","vehicle":"or null","customerName":"or null","amount":"price if closure else null","notes":"","primaryTech":"name","primaryReason":"max 4 words","backupTechs":["name1","name2"],"urgency":"high|normal"}`;
+
+  let r;
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({model:"claude-sonnet-4-20250514", max_tokens:1000,
+        messages:[{role:"user", content:prompt}]})
+    });
+    const data = await res.json();
+    const txt = data.content.map(i=>i.text||'').join('');
+    r = JSON.parse(txt.replace(/```json|```/g,'').trim());
+    r = fixAssignment(r);
+    r = fixMsgType(r, input);
+    r.notes = ''; r.dispatchMsg = null; // always build message from code
+    // cap primaryReason to avoid long AI-generated text
+    if(r.primaryReason && r.primaryReason.length > 40) r.primaryReason = reasonLabel(r.jobType);
+    if(forcedMsgType !== 'auto') r.msgType = forcedMsgType;
+  } catch(e) {
+    r = fallback(input);
+  }
+
+  r = fixMsgType(r, input);
+  if(forcedMsgType !== 'auto') r.msgType = forcedMsgType;
+  pending = {r, raw:input, priv};
+  showResult(r, input);
+  document.getElementById('spinner').classList.remove('visible');
+  document.getElementById('analyzeBtn').disabled = false;
+}
+
+// ── SAFETY: override wrong assignment ────────────────────────
+function fixAssignment(r) {
+  const {primary} = getRules(r.jobType);
+  const ok = primary.some(n => n.toLowerCase() === (r.primaryTech||'').toLowerCase());
+  if (!ok && r.jobType !== 'unknown') {
+    const {rec, backups} = bestTech(r.jobType);
+    r.primaryTech   = rec;
+    r.primaryReason = reasonLabel(r.jobType);
+    r.backupTechs   = backups;
+  }
+  return r;
+}
+
+// ── SAFETY: override wrong msgType ───────────────────────────
+function fixMsgType(r, rawText) {
+  if (forcedMsgType !== 'auto') return r; // user override takes priority
+  const t = rawText.toLowerCase();
+
+  // Strong closure signals: actual payment amounts
+  const realClosure = /paid\s*[:=]?\s*\d+|\$\s*\d+\s*(cash|total|parts)|\d+\s*cash|\d+\s*parts/i.test(rawText);
+
+  // False closure signals: parts mentioned but no payment
+  const falseClosure = /bought parts|cx bought|customer bought|parts on amazon|parts from amazon|brought parts/i.test(rawText);
+
+  // Strong new lead signals: structured lead format
+  const hasLeadFormat = /phone\s*\d*\s*:/i.test(rawText) || /name\s*:/i.test(rawText) || /desc\s*:/i.test(rawText);
+
+  if (r.msgType === 'closure' && falseClosure && !realClosure) {
+    r.msgType = 'new_lead';
+  }
+  if (r.msgType === 'closure' && hasLeadFormat && !realClosure) {
+    r.msgType = 'new_lead';
+  }
+  return r;
+}
+
+// ── LOCAL FALLBACK ────────────────────────────────────────────
+function fallback(text) {
+  const l = text.toLowerCase();
+    const hasPaid   = /paid[:\s]*\d|cash[:\s]*\d|\$\d|(\d+\s+parts)/i.test(text) && !/bought|amazon|customer.*parts|cx.*parts/i.test(text);
+  const hasUpdate = /triple a|on the way|she will|he will|waiting|customer said/i.test(text);
+  const isGerman  = GERMAN.some(b=>l.includes(b));
+  const isCar     = /car key|auto|new key|\bkey\b/i.test(text);
+  const isLockout = /car\s*lock\s*out|house\s*lock\s*out|lockout|lock\s*out|locked\s*out/i.test(text);
+  const isLock    = /change lock|rekey|deadbolt|lock change/i.test(text);
+
+  const hasDecline = /not interested|went down to|will call back|too expensive|she will wait|he will wait|will wait|called back|no answer|no response|customer declined|declined|cancelled|cancel/i.test(text);
+  const msgType = hasPaid?'closure':(hasUpdate||hasDecline)?'update':'new_lead';
+  let jobType = isLockout?'lockout': isGerman&&isCar?'car_key_german': isCar?'car_key': isLock?'lock':'unknown';
+
+  const {rec,backups} = bestTech(jobType);
+  // Extract phone: find 10-digit sequences, skip 5-digit zip codes
+  const phAll = text.match(/\b\d[\d\-\s]{8,12}\d\b/g) || [];
+  const phFiltered = phAll.filter(p => p.replace(/[^\d]/g,'').length >= 10).map(p => p.trim());
+  const ph = phFiltered.length ? [phFiltered[0]] : null;
+  const ad = text.match(/\d+\s+[\w\s]+(?:,[\w\s,]+){1,3}/);
+  const lbl = {car_key:'Car Key',car_key_german:'Car Key (German)',lockout:'Lockout',lock:'Lock Change',unknown:'Job'};
+
+  return {msgType, jobType, jobTypeLabel:lbl[jobType],
+    address:ad?ad[0].trim():null, phone:ph?ph[0].trim():null,
+    vehicle:null, customerName:null, amount:null, notes:'',
+    primaryTech:rec, primaryReason:reasonLabel(jobType), backupTechs:backups,
+    urgency:'normal', dispatchMsg:buildMsg(rec,{jobTypeLabel:lbl[jobType],address:ad?ad[0].trim():null,phone:ph?ph[0].trim():null})};
+}
+
+// ── RENDER RESULT ─────────────────────────────────────────────
+function showResult(r, raw) {
+  const bcMap = {car_key:'car',car_key_german:'german',lockout:'lockout',lock:'lock',unknown:'lock'};
+  const mtBadge = {update:'update',closure:'closure'};
+  const bc = mtBadge[r.msgType] || bcMap[r.jobType] || 'lock';
+  const icons = {car_key:'🚗',car_key_german:'🇩🇪',lockout:'🔓',lock:'🔐',unknown:'🔧'};
+  const lbl = r.msgType==='update'?'📤 Update':r.msgType==='closure'?'✅ Closure':`${icons[r.jobType]||'🔧'} ${r.jobTypeLabel}`;
+
+  document.getElementById('jobBadge').className=`job-badge ${bc}`;
+  document.getElementById('jobBadge').textContent=lbl;
+  document.getElementById('urgTag').style.display=r.urgency==='high'?'flex':'none';
+
+  let h='';
+  if(r.phone||r.address){
+    h+=`<div class="info-row">`;
+    if(r.phone)   h+=`<div class="info-item"><div class="info-label">Phone</div><div class="info-val">${r.phone}</div></div>`;
+    if(r.address) h+=`<div class="info-item"><div class="info-label">Address</div><div class="info-val">${r.address}</div></div>`;
+    h+=`</div>`;
+  }
+  if(r.vehicle)      h+=`<div class="info-row"><div class="info-item full"><div class="info-label">Vehicle</div><div class="info-val">${r.vehicle}</div></div></div>`;
+  if(r.amount)       h+=`<div class="info-row"><div class="info-item"><div class="info-label">Amount</div><div class="info-val" style="color:var(--green);font-weight:700">${r.amount}</div></div></div>`;
+  if(r.customerName) h+=`<div class="info-row"><div class="info-item"><div class="info-label">Customer</div><div class="info-val">${r.customerName}</div></div></div>`;
+  if(r.notes)        h+=`<div class="info-row"><div class="info-item full"><div class="info-label">Notes</div><div class="info-val" style="color:var(--sub);font-size:12px">${r.notes}</div></div></div>`;
+  h+=`<div class="divider"></div>`;
+
+  if(r.msgType==='update'||r.msgType==='closure'){
+    h+=`<div class="rec-title">Forward to Supplier</div>`;
+    if(!priv){
+      h+=`<div class="src-label">Select supplier</div><div class="src-chips">`;
+      SUPPLIERS.forEach(s=>{ h+=`<div class="src-chip" onclick="pickSrc(this)">${s}</div>`; });
+      h+=`</div>`;
+    }
+    h+=msgBoxHTML(raw,'fwd');
+    h+=`<button class="btn btn-green" style="margin-top:4px" onclick="forward('${r.msgType}')">📤 Forward to Supplier</button>`;
+  } else {
+    if(!priv){
+      h+=`<div class="src-label">Received from</div><div class="src-chips">`;
+      SUPPLIERS.forEach(s=>{ h+=`<div class="src-chip" onclick="pickSrc(this)">${s}</div>`; });
+      h+=`</div>`;
+    }
+    h+=`<div class="rec-title">Assign Technician</div>`;
+    const dm = buildMsg(r.primaryTech, r);
+    h+=techCardHTML(r.primaryTech, r.primaryReason, true, dm);
+    (r.backupTechs||[]).slice(0,2).forEach(n=>{
+      h+=techCardHTML(n,'Backup',false,buildMsg(n,r));
+    });
+  }
+
+  document.getElementById('resultBody').innerHTML=h;
+  document.getElementById('resultCard').classList.add('visible');
+}
+
+function techCardHTML(name, reason, isPrimary, msg) {
+  const t = TECHS.find(x=>x.name===name);
+  const eff = t ? effectiveStatus(t) : 'free';
+  const availLabel = eff==='dayoff'?'● Day Off': eff==='free'?'● Available':'● Busy';
+  const eid = 'e_'+name.toLowerCase();
+  return `<div class="tech-rec ${isPrimary?'best':''}">
+    <div class="tech-rec-top">
+      <div class="tech-rec-name">${name}</div>
+      <div class="tech-avail ${eff==='dayoff'?'busy':eff}">${availLabel}</div>
+    </div>
+    <div class="tech-rec-skill">${t?t.note:''}</div>
+    <div class="tech-rec-reason">${reason}</div>
+    ${msgBoxHTML(msg,eid)}
+    <button class="tech-rec-btn" onclick="dispatch('${name}','${eid}')">
+      ${isPrimary?'✓ Dispatch':'↗ Dispatch (backup)'}
+    </button>
+  </div>`;
+}
+
+function msgBoxHTML(msg, id) {
+  const safe = (msg||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return `<div class="msg-box">
+    <div class="msg-box-hdr">
+      <div class="msg-lbl">Message</div>
+      <div class="msg-edit-toggle" onclick="toggleEdit('${id}')">Edit</div>
+    </div>
+    <div class="msg-text" id="pr_${id}">${safe}</div>
+    <textarea class="msg-ta" id="ta_${id}">${msg||''}</textarea>
+  </div>`;
+}
+
+function toggleEdit(id) {
+  const ta=document.getElementById('ta_'+id), pr=document.getElementById('pr_'+id);
+  const show=ta.style.display!=='block';
+  ta.style.display=show?'block':'none';
+  pr.style.display=show?'none':'block';
+  if(show){ta.value=pr.textContent||pr.innerText;ta.focus();}
+  else{pr.textContent=ta.value;}
+}
+
+function pickSrc(el) {
+  el.closest('.src-chips').querySelectorAll('.src-chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function getSrc() { return document.querySelector('.src-chip.selected')?.textContent||null; }
+
+function buildMsg(name, r) {
+  let m=`Hi ${name},\n\nNew job:\n`;
+  if(r.address)      m+=`📍 ${r.address}\n`;
+  if(r.vehicle)      m+=`🚗 ${r.vehicle}\n`;
+  if(r.jobTypeLabel) m+=`🔧 ${r.jobTypeLabel}\n`;
+  if(r.phone)        m+=`📞 ${r.phone}\n`;
+  if(r.customerName) m+=`👤 ${r.customerName}\n`;
+  m+=`\nPlease confirm ✅`;
+  return m;
+}
+
+function getMsg(id) {
+  const ta=document.getElementById('ta_'+id), pr=document.getElementById('pr_'+id);
+  return ta&&ta.style.display==='block' ? ta.value : (pr?pr.textContent||pr.innerText:'');
+}
+
+// ── DISPATCH ─────────────────────────────────────────────────
+function dispatch(name, eid) {
+  if(!pending) return;
+  const {r,raw} = pending;
+  const src = priv?'Private':(getSrc()||'Unknown');
+  const msg = getMsg(eid);
+
+  jobs.unshift({
+    id:`J${++seq}`, type:r.jobTypeLabel||'Job', jobType:r.jobType,
+    address:r.address, phone:r.phone, vehicle:r.vehicle,
+    tech:name, source:src, status:'dispatched', isPrivate:priv,
+    time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+    date:new Date().toLocaleDateString('en-US'),
+    rawLead:raw, dispatchMsg:msg, closureSent:false, notes:r.notes
+  });
+
+  const t=TECHS.find(x=>x.name===name);
+  if(t){t.status='busy';t.currentJob=r.jobTypeLabel;}
+
+  learn.push({ts:Date.now(),src,techName:name,jobType:r.jobType,address:r.address,vehicle:r.vehicle,rawLead:raw});
+  save();
+  showToast(`✅ Dispatched to ${name}`);
+  reset();
+}
+
+// ── FORWARD ───────────────────────────────────────────────────
+function forward(msgType) {
+  if(!pending) return;
+  const src = priv?'Private':getSrc();
+  if(!priv&&!src) return showToast('Select a supplier first');
+  const msg = getMsg('fwd');
+
+  if(msgType==='closure'){
+    const j=jobs.find(j=>j.source===src&&j.status==='dispatched');
+    if(j){
+      j.status='done'; j.closureSent=true;
+      const t=TECHS.find(x=>x.name===j.tech);
+      if(t){t.status='free';t.currentJob=null;}
+    }
+  }
+  learn.push({ts:Date.now(),action:msgType==='closure'?'closure_sent':'update_sent',src,msg});
+  save();
+  showToast(msgType==='closure'?'✅ Closure sent':'📤 Update forwarded');
+  reset();
+}
+
+function reset() {
+  document.getElementById('leadInput').value='';
+  document.getElementById('resultCard').classList.remove('visible');
+  priv=false; document.getElementById('privToggle').classList.remove('on');
+  pending=null;
+}
+
+// ── JOBS ─────────────────────────────────────────────────────
+function renderJobs() {
+  const el=document.getElementById('jobsList');
+  if(!jobs.length){el.innerHTML=`<div class="empty"><div style="font-size:40px;opacity:.4;margin-bottom:10px">📋</div><div>No jobs yet</div></div>`;return;}
+  el.innerHTML=jobs.map(j=>`
+    <div class="job-item ${j.isPrivate?'private-job':j.status}">
+      <div class="job-top">
+        <div>
+          <div class="job-type">${j.type}</div>
+          <div class="job-meta">${j.address||'—'}</div>
+          ${j.vehicle?`<div class="job-meta">${j.vehicle}</div>`:''}
+        </div>
+        <div style="text-align:right">
+          <div class="job-badge-sm ${j.isPrivate?'dispatched':j.status}">${j.isPrivate?'Private':j.status==='done'?'Done':'Active'}</div>
+          <div style="font-size:11px;color:var(--sub);margin-top:4px;font-family:var(--mono)">${j.time}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;font-weight:600;color:var(--gold)">${j.tech}</div>
+        <div style="font-size:11px;color:var(--sub);font-family:var(--mono)">${j.source||''}</div>
+      </div>
+      ${j.status!=='done'?`<div class="job-actions">
+        <button class="job-action-btn done-btn" onclick="markDone('${j.id}')">✓ Done</button>
+        <button class="job-action-btn" onclick="viewRaw('${j.id}')">👁 Details</button>
+      </div>`:''}
+    </div>`).join('');
+}
+
+function markDone(id){
+  const j=jobs.find(x=>x.id===id); if(!j)return;
+  j.status='done';
+  const t=TECHS.find(x=>x.name===j.tech);
+  if(t){t.status='free';t.currentJob=null;}
+  save();renderJobs();showToast('✅ Marked as done');
+}
+
+function viewRaw(id){
+  const j=jobs.find(x=>x.id===id);
+  if(j)alert(`${j.id} · ${j.type}\n${j.address||''}\nTech: ${j.tech}\nSource: ${j.source||'—'}\n\n${j.rawLead||''}`);
+}
+
+// ── TECHS ─────────────────────────────────────────────────────
+// dayoffs: { techId: "YYYY-MM-DD" }
+let dayoffs = JSON.parse(localStorage.getItem('dp_dayoffs') || '{}');
+
+function saveDayoffs(){ localStorage.setItem('dp_dayoffs', JSON.stringify(dayoffs)); }
+
+function isTodayOff(id){
+  const d = dayoffs[id];
+  if (!d) return false;
+  return d === todayStr();
+}
+
+function todayStr(){
+  return new Date().toISOString().slice(0,10);
+}
+
+function nextNDays(n){
+  const days=[];
+  for(let i=0;i<n;i++){
+    const d=new Date(); d.setDate(d.getDate()+i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  return days;
+}
+
+function friendlyDate(str){
+  const d=new Date(str+'T12:00:00');
+  const today=new Date(); today.setHours(12,0,0,0);
+  const diff=Math.round((d-today)/(1000*60*60*24));
+  if(diff===0) return 'Today';
+  if(diff===1) return 'Tomorrow';
+  return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+}
+
+function effectiveStatus(t){
+  if(isTodayOff(t.id)) return 'dayoff';
+  return t.status;
+}
+
+function renderTechs(){
+  const days = nextNDays(7);
+  document.getElementById('techList').innerHTML = TECHS.map(t => {
+    const eff = effectiveStatus(t);
+    const offDate = dayoffs[t.id];
+    const statusLabel = eff==='dayoff'?`Day Off (${friendlyDate(offDate)})`: eff==='free'?'Available':'Busy';
+    const dotColor = eff==='dayoff'?'var(--purple)': eff==='free'?'var(--green)':'var(--orange)';
+    const statusColor = eff==='dayoff'?'var(--purple)': eff==='free'?'var(--green)':'var(--orange)';
+    const dayBtns = days.map(d=>`<button style="padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid ${offDate===d?'var(--purple)':'var(--border)'};background:${offDate===d?'#a78bfa22':'var(--card)'};color:${offDate===d?'var(--purple)':'var(--sub)'};cursor:pointer;font-family:var(--sans)" onclick="selectDayoff('${t.id}','${d}',this)">${friendlyDate(d)}</button>`).join('');
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px">
+      <div style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="openDayoffPicker('${t.id}')">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:9px;height:9px;border-radius:50%;background:${dotColor};flex-shrink:0;box-shadow:${eff==='free'?'0 0 6px #2dd87a88':'none'}"></div>
+          <div>
+            <div style="font-size:15px;font-weight:600">${t.name}</div>
+            <div style="font-size:11px;color:var(--sub)">${t.note}</div>
+            ${offDate?`<div style="font-size:10px;color:var(--purple);margin-top:2px">Off: ${friendlyDate(offDate)}</div>`:''}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;font-family:var(--mono);color:${statusColor}">${statusLabel}</div>
+          <div style="font-size:10px;color:var(--sub);margin-top:3px">tap to set day off</div>
+        </div>
+      </div>
+      <div id="picker_${t.id}" style="display:none;padding:12px 14px;border-top:1px solid var(--border);background:var(--card2)">
+        <div style="font-size:11px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Day off for ${t.name}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px" id="daybtns_${t.id}">${dayBtns}</div>
+        <div style="display:flex;gap:8px">
+          <button style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--purple);color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--sans)" onclick="saveDayoffFor('${t.id}')">Save Day Off</button>
+          <button style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--sub);font-size:13px;cursor:pointer;font-family:var(--sans)" onclick="clearDayoff('${t.id}')">Clear</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let pickerSelections = {};
+
+function openDayoffPicker(id){
+  // close all others, toggle this one
+  TECHS.forEach(t=>{
+    const p=document.getElementById('picker_'+t.id);
+    if(p && t.id!==id) p.style.display='none';
+  });
+  const p=document.getElementById('picker_'+id);
+  if(!p) return;
+  p.style.display = p.style.display==='block' ? 'none' : 'block';
+  pickerSelections[id] = dayoffs[id] || null;
+}
+
+function selectDayoff(id, date, btn){
+  pickerSelections[id] = date;
+  const container = document.getElementById('daybtns_'+id);
+  if(container) container.querySelectorAll('button').forEach(b=>{
+    b.style.background='var(--card)';
+    b.style.color='var(--sub)';
+    b.style.borderColor='var(--border)';
+  });
+  btn.style.background='#a78bfa22';
+  btn.style.color='var(--purple)';
+  btn.style.borderColor='var(--purple)';
+}
+
+function saveDayoffFor(id){
+  const date = pickerSelections[id];
+  if(!date) return showToast('Select a date first');
+  dayoffs[id] = date;
+  saveDayoffs();
+  const t=TECHS.find(x=>x.id===id);
+  const p=document.getElementById('picker_'+id);
+  if(p) p.style.display='none';
+  renderTechs();
+  showToast(`${t?.name} — day off: ${friendlyDate(date)}`);
+}
+
+function clearDayoff(id){
+  delete dayoffs[id];
+  saveDayoffs();
+  const t=TECHS.find(x=>x.id===id);
+  const p=document.getElementById('picker_'+id);
+  if(p) p.style.display='none';
+  renderTechs();
+  showToast(`${t?.name} — day off cleared`);
+}
+
+function toggleTech(id){
+  const t=TECHS.find(x=>x.id===id); if(!t)return;
+  if(effectiveStatus(t)==='dayoff'){ showToast(`${t.name} is off today`); return; }
+  t.status=t.status==='free'?'busy':'free';
+  renderTechs();
+  showToast(`${t.name}: ${t.status==='free'?'Available ✅':'Busy 🔶'}`);
+}
+
+// ── STATS ─────────────────────────────────────────────────────
+function renderStats(){
+  document.getElementById('s-tot').textContent  = jobs.length;
+  document.getElementById('s-done').textContent = jobs.filter(j=>j.status==='done').length;
+  document.getElementById('s-act').textContent  = jobs.filter(j=>j.status==='dispatched').length;
+  document.getElementById('s-priv').textContent = jobs.filter(j=>j.isPrivate).length;
+  const by={};
+  jobs.forEach(j=>{by[j.tech]=(by[j.tech]||0)+1;});
+  const sorted=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('techStats').innerHTML=sorted.length
+    ?sorted.map(([n,c])=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:15px;font-weight:600">${n}</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--gold)">${c}</div></div>`).join('')
+    :'<div class="empty"><div>No data yet</div></div>';
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── MSG TYPE OVERRIDE ─────────────────────────────────────────
+let forcedMsgType = 'auto';
+
+function setMsgType(type, btn){
+  forcedMsgType = type;
+  document.querySelectorAll('.mtype-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+document.getElementById('learnCount').textContent=learn.length;
+</script>
+</body>
+</html>
