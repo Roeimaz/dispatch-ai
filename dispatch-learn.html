@@ -384,10 +384,11 @@ STRICT DISPATCH RULES — follow exactly:
    new_lead = only if it's clearly a fresh job request with NO indication of prior contact or negotiation
 
 Extract fields carefully:
-- phone: 10-digit US number only (e.g. 7024216148). Do NOT include zip codes (5 digits) in the phone field.
-- address: full street address including unit/apt if present
-- vehicle: year + make + model (e.g. "2018 Kia Sorento")
-- jobTypeLabel: specific job name (e.g. "Ignition Fix", "Car Lockout", "House Lockout", "Lock Change", "Car Key") — never just "Job". L/O = Lockout.
+- phone: 10-digit US number only (e.g. 7024216148). Do NOT include zip codes (5 digits). Strip any country code (1-702... → 7024...).
+- address: ONLY the street address (e.g. "123 Main St, Las Vegas, NV 89101"). Do NOT include Name/Phone/Desc labels in the address field.
+- vehicle: year + make + model found ANYWHERE in the message including after blank lines (e.g. "2006 Chevy Tahoe", "2018 Kia Sorento"). Always look at every line.
+- customerName: extract from "Name: X" format if present.
+- jobTypeLabel: specific job name (e.g. "Ignition Fix", "Car Lockout", "House Lockout", "Lock Change", "Car Key") — never just "Job". L/O = Lockout. "Desc: Car Lockout" means jobTypeLabel = "Car Lockout".
 
 Return ONLY valid JSON (no markdown, no extra text). Do NOT include dispatchMsg. Do NOT add notes or recommendations:
 {"msgType":"new_lead|update|closure","jobType":"car_key|car_key_german|lockout|lock|unknown","jobTypeLabel":"short label","address":"or null","phone":"or null","vehicle":"or null","customerName":"or null","amount":"price if closure else null","notes":"","primaryTech":"name","primaryReason":"max 4 words","backupTechs":["name1","name2"],"urgency":"high|normal"}`;
@@ -471,6 +472,9 @@ function fallback(text) {
   let jobType = isLockout?'lockout': isGerman&&isCar?'car_key_german': isCar?'car_key': isLock?'lock':'unknown';
 
   const {rec,backups} = bestTech(jobType);
+  // Extract vehicle from any line: year (4 digits) + make + model
+  var vehicleMatch = text.match(/\b(19|20)\d{2}\s+[A-Za-z][\w\s]{2,25}/);
+  var vehicle = vehicleMatch ? vehicleMatch[0].trim() : null;
   // Extract phone: find 10-digit sequences, skip 5-digit zip codes
   const phAll = text.match(/\b\d[\d\-\s]{8,12}\d\b/g) || [];
   const phFiltered = phAll.filter(p => p.replace(/[^\d]/g,'').length >= 10).map(p => p.trim());
@@ -490,7 +494,7 @@ function fallback(text) {
 
   return {msgType, jobType, jobTypeLabel:lbl[jobType],
     address:ad?ad[0].trim():null, phone:ph?ph[0].trim():null,
-    vehicle:null, customerName:null, amount:null, notes:'',
+    vehicle:vehicle, customerName:null, amount:null, notes:'',
     primaryTech:rec, primaryReason:reasonLabel(jobType), backupTechs:backups,
     urgency:'normal', dispatchMsg:buildMsg(rec,{jobTypeLabel:lbl[jobType],address:ad?ad[0].trim():null,phone:ph?ph[0].trim():null})};
 }
