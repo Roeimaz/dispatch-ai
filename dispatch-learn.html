@@ -210,6 +210,30 @@ input[type=text]:focus{border-color:var(--accent)}
   <div class="tech-list" id="techList"></div>
 </div>
 
+<!-- Edit Tech Modal -->
+<div id="editTechModal" style="display:none;position:fixed;inset:0;background:#000000bb;z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;width:90%;max-width:400px">
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px">Edit Technician</div>
+    <input type="hidden" id="editTechId">
+    <div style="font-size:11px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Name</div>
+    <input id="editTechName" type="text" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:14px;padding:10px 12px;margin-bottom:14px">
+    <div style="font-size:11px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Skills</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px" id="editSkillPicker">
+      <div class="skill-chip" data-skill="car_key" onclick="toggleEditSkill(this)">🚗 Car Keys</div>
+      <div class="skill-chip" data-skill="car_key_german" onclick="toggleEditSkill(this)">🇩🇪 German Cars</div>
+      <div class="skill-chip" data-skill="lock" onclick="toggleEditSkill(this)">🔐 Lock Change</div>
+      <div class="skill-chip" data-skill="lockout" onclick="toggleEditSkill(this)">🔓 Lockout</div>
+      <div class="skill-chip" data-skill="commercial" onclick="toggleEditSkill(this)">🏢 Commercial</div>
+      <div class="skill-chip" data-skill="residential" onclick="toggleEditSkill(this)">🏠 Residential</div>
+      <div class="skill-chip" data-skill="all" onclick="toggleEditSkill(this)">⭐ General Backup</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="saveEditTech()" style="flex:1;padding:12px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--sans)">Save</button>
+      <button onclick="closeEditTech()" style="padding:12px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--sub);font-size:14px;cursor:pointer;font-family:var(--sans)">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add Tech Modal -->
 <div id="addTechModal" style="display:none;position:fixed;inset:0;background:#000000bb;z-index:200;align-items:center;justify-content:center">
   <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;width:90%;max-width:400px">
@@ -499,6 +523,34 @@ function fallback(text) {
     urgency:'normal', dispatchMsg:buildMsg(rec,{jobTypeLabel:lbl[jobType],address:ad?ad[0].trim():null,phone:ph?ph[0].trim():null})};
 }
 
+// ── MANUAL TECH SELECTOR ─────────────────────────────────────
+function buildManualSection(r, primaryName, shownBackups) {
+  var excluded = [primaryName].concat(shownBackups);
+  var remaining = TECHS.filter(function(t){ return excluded.indexOf(t.name) === -1; });
+  if(!remaining.length) return '';
+
+  var h = '<div style="margin-top:4px">';
+  h += '<button onclick="toggleManual(this)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);margin-bottom:8px">▾ Assign to someone else</button>';
+  h += '<div id="manualTechs" style="display:none">';
+  remaining.forEach(function(t){
+    h += techCardHTML(t.name, 'Manual override', false, buildMsg(t.name, r));
+  });
+  h += '</div></div>';
+  return h;
+}
+
+function toggleManual(btn){
+  var el = document.getElementById('manualTechs');
+  if(!el) return;
+  if(el.style.display === 'none'){
+    el.style.display = 'block';
+    btn.textContent = '▴ Assign to someone else';
+  } else {
+    el.style.display = 'none';
+    btn.textContent = '▾ Assign to someone else';
+  }
+}
+
 // ── RENDER RESULT ─────────────────────────────────────────────
 function showResult(r, raw) {
   const bcMap = {car_key:'car',car_key_german:'german',lockout:'lockout',lock:'lock',unknown:'lock'};
@@ -542,9 +594,16 @@ function showResult(r, raw) {
     h+=`<div class="rec-title">Assign Technician</div>`;
     const dm = buildMsg(r.primaryTech, r);
     h+=techCardHTML(r.primaryTech, r.primaryReason, true, dm);
-    (r.backupTechs||[]).slice(0,2).forEach(n=>{
-      h+=techCardHTML(n,'Backup',false,buildMsg(n,r));
-    });
+    // deduplicate backups and exclude primary
+  var shownBackups = [];
+  (r.backupTechs||[]).forEach(function(n){
+    if(n !== r.primaryTech && shownBackups.indexOf(n) === -1) shownBackups.push(n);
+  });
+  shownBackups.forEach(function(n){
+    h+=techCardHTML(n,'Backup',false,buildMsg(n,r));
+  });
+  // Manual override - show all remaining techs collapsed
+  h += buildManualSection(r, r.primaryTech, shownBackups);
   }
 
   document.getElementById('resultBody').innerHTML=h;
@@ -846,13 +905,18 @@ function renderTechs(){
     actWrap.appendChild(clrBtn);
     picker.appendChild(actWrap);
 
-    // Remove tech button
+    // Edit + Remove buttons
     var removeWrap = document.createElement('div');
-    removeWrap.style.cssText = 'margin-top:10px;border-top:1px solid var(--border);padding-top:10px';
+    removeWrap.style.cssText = 'margin-top:10px;border-top:1px solid var(--border);padding-top:10px;display:flex;gap:8px';
+    var editBtn = document.createElement('button');
+    editBtn.style.cssText = 'flex:1;padding:8px;border-radius:8px;border:1px solid #4f8ef744;background:transparent;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)';
+    editBtn.textContent = '✏️ Edit';
+    editBtn.onclick = (function(tid){ return function(){ openEditTech(tid); }; })(t.id);
     var removeBtn = document.createElement('button');
-    removeBtn.style.cssText = 'width:100%;padding:8px;border-radius:8px;border:1px solid #f05a5a44;background:transparent;color:var(--red);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)';
-    removeBtn.textContent = '✕ Remove '+t.name;
+    removeBtn.style.cssText = 'flex:1;padding:8px;border-radius:8px;border:1px solid #f05a5a44;background:transparent;color:var(--red);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)';
+    removeBtn.textContent = '✕ Remove';
     removeBtn.onclick = (function(tid){ return function(){ removeTech(tid); }; })(t.id);
+    removeWrap.appendChild(editBtn);
     removeWrap.appendChild(removeBtn);
     picker.appendChild(removeWrap);
 
@@ -983,6 +1047,67 @@ function saveNewTech(){
   closeAddTech();
   renderTechs();
   showToast(name+' added ✅');
+}
+
+function openEditTech(id){
+  var t = TECHS.find(function(x){ return x.id===id; });
+  if(!t) return;
+  // close day off picker
+  TECHS.forEach(function(x){
+    var p = document.getElementById('picker_'+x.id);
+    if(p) p.style.display='none';
+  });
+  document.getElementById('editTechId').value = id;
+  document.getElementById('editTechName').value = t.name;
+  // set skills
+  document.querySelectorAll('#editSkillPicker .skill-chip').forEach(function(c){
+    c.classList.toggle('on', t.skills.indexOf(c.getAttribute('data-skill')) >= 0);
+  });
+  document.getElementById('editTechModal').style.display = 'flex';
+}
+
+function closeEditTech(){
+  document.getElementById('editTechModal').style.display = 'none';
+}
+
+function toggleEditSkill(el){
+  el.classList.toggle('on');
+}
+
+function saveEditTech(){
+  var id = document.getElementById('editTechId').value;
+  var name = document.getElementById('editTechName').value.trim();
+  if(!name){ showToast('Enter a name'); return; }
+  var skills = [];
+  document.querySelectorAll('#editSkillPicker .skill-chip.on').forEach(function(c){
+    skills.push(c.getAttribute('data-skill'));
+  });
+  if(!skills.length){ showToast('Select at least one skill'); return; }
+
+  var t = TECHS.find(function(x){ return x.id===id; });
+  if(!t) return;
+
+  // build note
+  var noteparts = [];
+  if(skills.indexOf('car_key_german')>=0) noteparts.push('Car keys · German vehicles only (BMW/Mercedes/VW/Audi…)');
+  else if(skills.indexOf('car_key')>=0) noteparts.push('Car keys');
+  if(skills.indexOf('lock')>=0 || skills.indexOf('lockout')>=0){
+    var lparts = [];
+    if(skills.indexOf('commercial')>=0) lparts.push('Commercial');
+    if(skills.indexOf('residential')>=0) lparts.push('Residential');
+    if(skills.indexOf('lockout')>=0) lparts.push('Lockout');
+    noteparts.push('Locks' + (lparts.length ? ' · '+lparts.join(' / ') : ''));
+  }
+  if(skills.indexOf('all')>=0) noteparts.push('General backup');
+
+  t.name = name;
+  t.skills = skills;
+  t.note = noteparts.join(' + ') || skills.join(', ');
+
+  saveTechs();
+  closeEditTech();
+  renderTechs();
+  showToast(name+' updated ✅');
 }
 
 function removeTech(id){
