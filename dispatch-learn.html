@@ -140,6 +140,10 @@ textarea::placeholder{color:var(--border)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .sec-title{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1px;font-family:var(--mono);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
 .empty{text-align:center;padding:48px 20px;color:var(--sub)}
+.skill-chip{padding:8px 14px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--card2);color:var(--sub);cursor:pointer;transition:all .15s}
+.skill-chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+input[type=text]{outline:none}
+input[type=text]:focus{border-color:var(--accent)}
 .mtype-btn{flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--sub);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .15s;text-align:center}
 .mtype-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .mtype-btn:active{transform:scale(.95)}
@@ -199,8 +203,34 @@ textarea::placeholder{color:var(--border)}
 </div>
 
 <div class="section" id="tab-techs">
-  <div class="sec-title">Technicians — tap to toggle</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+    <div class="sec-title" style="margin-bottom:0;padding-bottom:0;border-bottom:none">Technicians</div>
+    <button onclick="openAddTech()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)">+ Add</button>
+  </div>
   <div class="tech-list" id="techList"></div>
+</div>
+
+<!-- Add Tech Modal -->
+<div id="addTechModal" style="display:none;position:fixed;inset:0;background:#000000bb;z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;width:90%;max-width:400px">
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px">Add Technician</div>
+    <div style="font-size:11px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Name</div>
+    <input id="newTechName" type="text" placeholder="e.g. David" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:14px;padding:10px 12px;margin-bottom:14px">
+    <div style="font-size:11px;color:var(--sub);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Skills</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px" id="skillPicker">
+      <div class="skill-chip" data-skill="car_key" onclick="toggleSkill(this)">🚗 Car Keys</div>
+      <div class="skill-chip" data-skill="car_key_german" onclick="toggleSkill(this)">🇩🇪 German Cars</div>
+      <div class="skill-chip" data-skill="lock" onclick="toggleSkill(this)">🔐 Lock Change</div>
+      <div class="skill-chip" data-skill="lockout" onclick="toggleSkill(this)">🔓 Lockout</div>
+      <div class="skill-chip" data-skill="commercial" onclick="toggleSkill(this)">🏢 Commercial</div>
+      <div class="skill-chip" data-skill="residential" onclick="toggleSkill(this)">🏠 Residential</div>
+      <div class="skill-chip" data-skill="all" onclick="toggleSkill(this)">⭐ General Backup</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="saveNewTech()" style="flex:1;padding:12px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--sans)">Save</button>
+      <button onclick="closeAddTech()" style="padding:12px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--sub);font-size:14px;cursor:pointer;font-family:var(--sans)">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <div class="section" id="tab-stats">
@@ -218,21 +248,48 @@ textarea::placeholder{color:var(--border)}
 <div class="toast" id="toast"></div>
 
 <script>
-const TECHS = [
+// Load custom techs from localStorage or use defaults
+const DEFAULT_TECHS = [
   {id:'lior',    name:'Lior',    skills:['car_key','all'],                              note:'Car keys · General backup',               status:'free'},
   {id:'ofer',    name:'Ofer',    skills:['car_key'],                                    note:'Car keys',                                status:'free'},
   {id:'tomer',   name:'Tomer',   skills:['lock','commercial','residential','lockout'],   note:'Locks · Commercial / Residential / Lockout', status:'free'},
-  {id:'gilad',   name:'Gilad',   skills:['lock','commercial','residential','lockout'],   note:'Locks · like Tomer',                      status:'free'},
-  {id:'daniel',  name:'Daniel',  skills:['lock','commercial','residential','car_key'],   note:'Locks + Car keys (last resort for car)',  status:'free'},
-  {id:'muriel',  name:'Muriel',  skills:['lock','commercial','residential','lockout'],   note:'Locks · like Tomer',                      status:'free'},
-  {id:'pini',    name:'Pini',    skills:['car_key_german'],                             note:'German cars only (BMW/Mercedes/VW…)',      status:'free'},
-  {id:'claudio', name:'Claudio', skills:['car_key_german'],                             note:'German cars · like Pini',                 status:'free'},
-  {id:'kobi',    name:'Kobi',    skills:['lock','commercial','residential','lockout'],   note:'Locks · like Tomer',                      status:'free'},
-  {id:'slava',   name:'Slava',   skills:['lock','commercial','residential','lockout'],   note:'Locks · like Tomer',                      status:'free'},
+  {id:'gilad',   name:'Gilad',   skills:['lock','commercial','residential','lockout'],   note:'Locks · Commercial / Residential / Lockout', status:'free'},
+  {id:'daniel',  name:'Daniel',  skills:['lock','commercial','residential','car_key'],   note:'Locks · Commercial / Residential + Car keys (last resort)', status:'free'},
+  {id:'muriel',  name:'Muriel',  skills:['lock','commercial','residential','lockout'],   note:'Locks · Commercial / Residential / Lockout', status:'free'},
+  {id:'pini',    name:'Pini',    skills:['car_key_german'],                             note:'Car keys · German vehicles only (BMW/Mercedes/VW/Audi…)', status:'free'},
+  {id:'claudio', name:'Claudio', skills:['car_key_german'],                             note:'Car keys · German vehicles only (BMW/Mercedes/VW/Audi…)', status:'free'},
+  {id:'kobi',    name:'Kobi',    skills:['lock','commercial','residential','lockout'],   note:'Locks · Commercial / Residential / Lockout', status:'free'},
+  {id:'slava',   name:'Slava',   skills:['lock','commercial','residential','lockout'],   note:'Locks · Commercial / Residential / Lockout', status:'free'},
 ];
+let TECHS = JSON.parse(localStorage.getItem('dp_techs') || 'null') || DEFAULT_TECHS.map(t => Object.assign({}, t));
 
 const SUPPLIERS = ['Ben','AGN','IAG','Best Locksmith','Dylan','Pini','NV Locksmith','Hen','Carmon','Eliran California'];
 const GERMAN = ['volkswagen','vw','mercedes','bmw','audi','porsche','jetta','passat','golf','tiguan','sprinter','opel'];
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwO-NvxbO80zqVC4IZsfr6L-r-MGrJU5OHEbtbCYh6Udmu1tSISE4abXNe9boKRw1us/exec';
+
+async function logToSheets(job) {
+  try {
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        date: job.date,
+        time: job.time,
+        type: job.type,
+        address: job.address || '',
+        phone: job.phone || '',
+        vehicle: job.vehicle || '',
+        tech: job.tech,
+        source: job.source || '',
+        status: job.status,
+        rawLead: job.rawLead || ''
+      })
+    });
+  } catch(e) {
+    console.log('Sheets log failed:', e);
+  }
+}
 
 // ── DISPATCH RULES (single source of truth) ──────────────────
 function getRules(jobType) {
@@ -560,14 +617,16 @@ function dispatch(name, eid) {
   const src = priv?'Private':(getSrc()||'Unknown');
   const msg = getMsg(eid);
 
-  jobs.unshift({
+  var newJob = {
     id:`J${++seq}`, type:r.jobTypeLabel||'Job', jobType:r.jobType,
     address:r.address, phone:r.phone, vehicle:r.vehicle,
     tech:name, source:src, status:'dispatched', isPrivate:priv,
     time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
     date:new Date().toLocaleDateString('en-US'),
     rawLead:raw, dispatchMsg:msg, closureSent:false, notes:r.notes
-  });
+  };
+  jobs.unshift(newJob);
+  logToSheets(newJob);
 
   const t=TECHS.find(x=>x.name===name);
   if(t){t.status='busy';t.currentJob=r.jobTypeLabel;}
@@ -652,6 +711,7 @@ function viewRaw(id){
 let dayoffs = JSON.parse(localStorage.getItem('dp_dayoffs') || '{}');
 
 function saveDayoffs(){ localStorage.setItem('dp_dayoffs', JSON.stringify(dayoffs)); }
+function saveTechs(){ localStorage.setItem('dp_techs', JSON.stringify(TECHS)); }
 
 function isTodayOff(id){
   const d = dayoffs[id];
@@ -782,6 +842,16 @@ function renderTechs(){
     actWrap.appendChild(clrBtn);
     picker.appendChild(actWrap);
 
+    // Remove tech button
+    var removeWrap = document.createElement('div');
+    removeWrap.style.cssText = 'margin-top:10px;border-top:1px solid var(--border);padding-top:10px';
+    var removeBtn = document.createElement('button');
+    removeBtn.style.cssText = 'width:100%;padding:8px;border-radius:8px;border:1px solid #f05a5a44;background:transparent;color:var(--red);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)';
+    removeBtn.textContent = '✕ Remove '+t.name;
+    removeBtn.onclick = (function(tid){ return function(){ removeTech(tid); }; })(t.id);
+    removeWrap.appendChild(removeBtn);
+    picker.appendChild(removeWrap);
+
     wrap.appendChild(picker);
     list.appendChild(wrap);
   });
@@ -863,6 +933,62 @@ function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── ADD / REMOVE TECH ────────────────────────────────────────
+function openAddTech(){
+  document.getElementById('newTechName').value = '';
+  document.querySelectorAll('.skill-chip').forEach(function(c){ c.classList.remove('on'); });
+  var modal = document.getElementById('addTechModal');
+  modal.style.display = 'flex';
+}
+
+function closeAddTech(){
+  document.getElementById('addTechModal').style.display = 'none';
+}
+
+function toggleSkill(el){
+  el.classList.toggle('on');
+}
+
+function saveNewTech(){
+  var name = document.getElementById('newTechName').value.trim();
+  if(!name){ showToast('Enter a name first'); return; }
+  var skills = [];
+  document.querySelectorAll('.skill-chip.on').forEach(function(c){ skills.push(c.getAttribute('data-skill')); });
+  if(!skills.length){ showToast('Select at least one skill'); return; }
+
+  // Build note from skills
+  var noteparts = [];
+  if(skills.indexOf('car_key_german')>=0) noteparts.push('Car keys · German vehicles only (BMW/Mercedes/VW/Audi…)');
+  else if(skills.indexOf('car_key')>=0) noteparts.push('Car keys');
+  if(skills.indexOf('lock')>=0 || skills.indexOf('lockout')>=0){
+    var lparts = [];
+    if(skills.indexOf('commercial')>=0) lparts.push('Commercial');
+    if(skills.indexOf('residential')>=0) lparts.push('Residential');
+    if(skills.indexOf('lockout')>=0) lparts.push('Lockout');
+    if(lparts.length) noteparts.push('Locks · '+lparts.join(' / '));
+    else noteparts.push('Locks');
+  }
+  if(skills.indexOf('all')>=0) noteparts.push('General backup');
+  var note = noteparts.join(' + ') || skills.join(', ');
+
+  var id = name.toLowerCase().replace(/[^a-z0-9]/g,'_')+'_'+Date.now();
+  TECHS.push({id:id, name:name, skills:skills, note:note, status:'free'});
+  saveTechs();
+  closeAddTech();
+  renderTechs();
+  showToast(name+' added ✅');
+}
+
+function removeTech(id){
+  var t = TECHS.find(function(x){ return x.id===id; });
+  if(!t) return;
+  if(!confirm('Remove '+t.name+'?')) return;
+  TECHS = TECHS.filter(function(x){ return x.id!==id; });
+  saveTechs();
+  renderTechs();
+  showToast(t.name+' removed');
 }
 
 // ── MSG TYPE OVERRIDE ─────────────────────────────────────────
