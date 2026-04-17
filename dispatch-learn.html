@@ -140,6 +140,9 @@ textarea::placeholder{color:var(--border)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .sec-title{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1px;font-family:var(--mono);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
 .empty{text-align:center;padding:48px 20px;color:var(--sub)}
+.appt-alert{background:#f05a5a18;border:1px solid #f05a5a55;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:none}
+.appt-alert.visible{display:block}
+.appt-badge{display:inline-block;background:var(--red);color:#fff;font-size:10px;font-weight:700;font-family:var(--mono);padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle}
 .skill-chip{padding:8px 14px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--card2);color:var(--sub);cursor:pointer;transition:all .15s}
 .skill-chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 input[type=text]{outline:none}
@@ -161,6 +164,7 @@ input[type=text]:focus{border-color:var(--accent)}
   <button class="tab" onclick="switchTab('jobs',this)">Jobs</button>
   <button class="tab" onclick="switchTab('techs',this)">Techs</button>
   <button class="tab" onclick="switchTab('stats',this)">Stats</button>
+  <button class="tab" id="apptTab" onclick="switchTab('appts',this)">📅 <span id="apptCount"></span></button>
 </div>
 
 <div class="section active" id="tab-new">
@@ -195,6 +199,15 @@ input[type=text]:focus{border-color:var(--accent)}
     </div>
     <div class="result-body" id="resultBody"></div>
   </div>
+</div>
+
+<div class="section" id="tab-appts">
+  <div class="sec-title">Appointments</div>
+  <div id="apptAlertBanner" class="appt-alert">
+    <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:8px">⏰ Appointments today</div>
+    <div id="apptAlertList"></div>
+  </div>
+  <div id="apptList"></div>
 </div>
 
 <div class="section" id="tab-jobs">
@@ -364,6 +377,7 @@ function switchTab(id, btn) {
   if(id==='jobs')  renderJobs();
   if(id==='techs') renderTechs();
   if(id==='stats') renderStats();
+  if(id==='appts') renderAppts();
 }
 
 function togglePrivate() {
@@ -515,11 +529,11 @@ function fallback(text) {
     address:ad?ad[0].trim():null, phone:ph?ph[0].trim():null,
     vehicle:vehicle, customerName:null, amount:null, notes:'',
     primaryTech:rec, primaryReason:reasonLabel(jobType), backupTechs:backups,
-    urgency:'normal', dispatchMsg:buildMsg(rec,{jobTypeLabel:lbl[jobType],address:ad?ad[0].trim():null,phone:ph?ph[0].trim():null})};
+    urgency:'normal', dispatchMsg:null};
 }
 
 // ── MANUAL TECH SELECTOR ─────────────────────────────────────
-function buildManualSection(r, primaryName, shownBackups) {
+function buildManualSection(r, primaryName, shownBackups, raw) {
   var excluded = [primaryName].concat(shownBackups);
   var remaining = TECHS.filter(function(t){ return excluded.indexOf(t.name) === -1; });
   if(!remaining.length) return '';
@@ -528,7 +542,7 @@ function buildManualSection(r, primaryName, shownBackups) {
   h += '<button onclick="toggleManual(this)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);margin-bottom:8px">▾ Assign to someone else</button>';
   h += '<div id="manualTechs" style="display:none">';
   remaining.forEach(function(t){
-    h += techCardHTML(t.name, 'Manual override', false, buildMsg(t.name, r));
+    h += techCardHTML(t.name, 'Manual override', false, buildMsg(t.name, r, raw));
   });
   h += '</div></div>';
   return h;
@@ -587,7 +601,7 @@ function showResult(r, raw) {
       h+=`</div>`;
     }
     h+=`<div class="rec-title">Assign Technician</div>`;
-    const dm = buildMsg(r.primaryTech, r);
+    const dm = buildMsg(r.primaryTech, r, raw);
     h+=techCardHTML(r.primaryTech, r.primaryReason, true, dm);
     // deduplicate backups and exclude primary
   var shownBackups = [];
@@ -595,10 +609,10 @@ function showResult(r, raw) {
     if(n !== r.primaryTech && shownBackups.indexOf(n) === -1) shownBackups.push(n);
   });
   shownBackups.forEach(function(n){
-    h+=techCardHTML(n,'Backup',false,buildMsg(n,r));
+    h+=techCardHTML(n,'Backup',false,buildMsg(n,r,raw));
   });
   // Manual override - show all remaining techs collapsed
-  h += buildManualSection(r, r.primaryTech, shownBackups);
+  h += buildManualSection(r, r.primaryTech, shownBackups, raw);
   }
 
   document.getElementById('resultBody').innerHTML=h;
@@ -652,15 +666,10 @@ function pickSrc(el) {
 
 function getSrc() { return document.querySelector('.src-chip.selected')?.textContent||null; }
 
-function buildMsg(name, r) {
-  let m=`Hi ${name},\n\nNew job:\n`;
-  if(r.address)      m+=`📍 ${r.address}\n`;
-  if(r.vehicle)      m+=`🚗 ${r.vehicle}\n`;
-  if(r.jobTypeLabel) m+=`🔧 ${r.jobTypeLabel}\n`;
-  if(r.phone)        m+=`📞 ${r.phone}\n`;
-  if(r.customerName) m+=`👤 ${r.customerName}\n`;
-  m+=`\nPlease confirm ✅`;
-  return m;
+function buildMsg(name, r, rawText) {
+  // Use original lead text, just add confirm at bottom
+  var base = (rawText || '').trim();
+  return base + '\n\nPlease confirm ✅';
 }
 
 function getMsg(id) {
@@ -685,6 +694,9 @@ function dispatch(name, eid) {
   };
   jobs.unshift(newJob);
   logToSheets(newJob);
+  // Check if lead has a scheduled appointment
+  var apptAdded = addAppointment(raw, name, src||'');
+  if(apptAdded) showToast('⚡ Dispatched + 📅 Appointment saved!');
 
   const t=TECHS.find(x=>x.name===name);
   if(t){t.status='busy';t.currentJob=r.jobTypeLabel;}
@@ -712,7 +724,16 @@ function forward(msgType) {
   }
   learn.push({ts:Date.now(),action:msgType==='closure'?'closure_sent':'update_sent',src,msg});
   save();
-  showToast(msgType==='closure'?'✅ Closure sent':'📤 Update forwarded');
+  // Check for appointment in the message
+  if(msgType !== 'closure'){
+    var relJob = jobs.find(function(j){ return j.source===src && j.status==='dispatched'; });
+    var techName = relJob ? relJob.tech : '';
+    var added = addAppointment(msg, techName, src||'');
+    if(added) showToast('📅 Appointment saved! Check the 📅 tab');
+    else showToast('📤 Update forwarded');
+  } else {
+    showToast('✅ Closure sent');
+  }
   reset();
 }
 
@@ -998,6 +1019,185 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),2500);
 }
 
+// ── APPOINTMENTS ─────────────────────────────────────────────
+// Las Vegas timezone = America/Los_Angeles (PST/PDT)
+var appts = JSON.parse(localStorage.getItem('dp_appts') || '[]');
+
+function saveAppts(){ localStorage.setItem('dp_appts', JSON.stringify(appts)); }
+
+function lvNow(){
+  // Current time in Las Vegas
+  return new Date(new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles'}));
+}
+
+function lvDateStr(date){
+  return date.toLocaleDateString('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric', year:'numeric'});
+}
+
+function parseApptFromText(text){
+  // Try to extract date and time from update message
+  // Las Vegas timezone context
+  var now = lvNow();
+  var result = {date:null, time:null, dateStr:null};
+
+  // Patterns: "tomorrow for 10 AM", "tomorrow at 2pm"
+  var tmrw = text.match(/tomorrow\s+(?:for|at)\s+(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)/i);
+  if(tmrw){
+    var d = new Date(now);
+    d.setDate(d.getDate()+1);
+    result.dateStr = lvDateStr(d);
+    result.time = tmrw[1].trim();
+    result.date = d.toISOString().slice(0,10);
+    return result;
+  }
+
+  // Patterns: "Monday 2pm", "Wednesday at 10am", day names
+  var days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  var dayMatch = text.match(new RegExp('('+days.join('|')+'|mon|tue|wed|thu|fri|sat|sun)\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)','i'));
+  if(dayMatch){
+    var dayNames = {sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
+    var targetDay = dayNames[dayMatch[1].toLowerCase()];
+    var d = new Date(now);
+    var diff = (targetDay - d.getDay() + 7) % 7 || 7;
+    d.setDate(d.getDate()+diff);
+    result.dateStr = lvDateStr(d);
+    result.time = dayMatch[2].trim();
+    result.date = d.toISOString().slice(0,10);
+    return result;
+  }
+
+  // Patterns: "Wed, Apr 15", "Apr 15", "04/15", "4/15"
+  var dateMatch = text.match(/(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})/i);
+  if(dateMatch){
+    var months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    var d = new Date(now.getFullYear(), months[dateMatch[1].toLowerCase()], parseInt(dateMatch[2]));
+    if(d < now) d.setFullYear(d.getFullYear()+1);
+    result.dateStr = lvDateStr(d);
+    result.date = d.toISOString().slice(0,10);
+    // try to get time too
+    var tMatch = text.match(/(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm))/i);
+    if(tMatch) result.time = tMatch[1].trim();
+    return result;
+  }
+
+  // Numeric date: 4/15, 04/15/2025
+  var numDate = text.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if(numDate){
+    var yr = numDate[3] ? parseInt(numDate[3]) : now.getFullYear();
+    if(yr < 100) yr += 2000;
+    var d = new Date(yr, parseInt(numDate[1])-1, parseInt(numDate[2]));
+    if(d < now) d.setFullYear(d.getFullYear()+1);
+    result.dateStr = lvDateStr(d);
+    result.date = d.toISOString().slice(0,10);
+    var tMatch = text.match(/(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm))/i);
+    if(tMatch) result.time = tMatch[1].trim();
+    return result;
+  }
+
+  return null;
+}
+
+function addAppointment(rawText, techName, source){
+  var parsed = parseApptFromText(rawText);
+  if(!parsed || !parsed.date) return false;
+
+  var appt = {
+    id: 'A'+Date.now(),
+    date: parsed.date,
+    dateStr: parsed.dateStr,
+    time: parsed.time || '',
+    tech: techName || '',
+    source: source || '',
+    rawText: rawText,
+    reminderSent: false,
+    done: false
+  };
+  appts.unshift(appt);
+  saveAppts();
+  updateApptBadge();
+  return true;
+}
+
+function updateApptBadge(){
+  var today = lvNow().toISOString().slice(0,10);
+  var todayAppts = appts.filter(function(a){ return !a.done && a.date === today; });
+  var upcoming = appts.filter(function(a){ return !a.done && a.date >= today; });
+  var badge = document.getElementById('apptCount');
+  var tab = document.getElementById('apptTab');
+  if(badge){
+    if(upcoming.length > 0){
+      badge.textContent = '📅 '+upcoming.length;
+      tab.style.color = todayAppts.length ? 'var(--red)' : 'var(--gold)';
+    } else {
+      badge.textContent = '📅';
+      tab.style.color = '';
+    }
+  }
+  // Show alert banner on New Lead tab if there are today's appts
+  var banner = document.getElementById('apptAlertBanner');
+  var list = document.getElementById('apptAlertList');
+  if(banner && list && todayAppts.length){
+    banner.classList.add('visible');
+    list.innerHTML = todayAppts.map(function(a){
+      var timeStr = a.time ? ' at '+a.time : '';
+      return '<div style="margin-bottom:8px;padding:10px;background:var(--card);border-radius:8px;border:1px solid #f05a5a33">'
+        +'<div style="font-size:13px;font-weight:600;color:var(--red)">⏰ Today'+timeStr+' — '+a.tech+'</div>'
+        +'<div style="font-size:11px;color:var(--sub);font-family:var(--mono);margin:4px 0">'+a.source+'</div>'
+        +'<button data-aid="'+a.id+'" onclick="sendReminder(this.dataset.aid)" style="margin-top:8px;padding:8px 16px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans)">📤 Copy Reminder</button>'
+        +'</div>';
+    }).join('');
+  } else if(banner){
+    banner.classList.remove('visible');
+  }
+}
+
+function sendReminder(apptId){
+  var a = appts.find(function(x){ return x.id===apptId; });
+  if(!a) return;
+  var msg = 'Reminder\n\n' + a.rawText;
+  navigator.clipboard.writeText(msg).then(function(){
+    showToast('✅ Copied! Paste to send to '+a.tech);
+  }).catch(function(){
+    // fallback - show in prompt
+    prompt('Copy this reminder:', msg);
+  });
+  a.reminderSent = true;
+  saveAppts();
+}
+
+function renderAppts(){
+  var today = lvNow().toISOString().slice(0,10);
+  var el = document.getElementById('apptList');
+  if(!el) return;
+  var active = appts.filter(function(a){ return !a.done; });
+  if(!active.length){
+    el.innerHTML = '<div class="empty"><div style="font-size:40px;opacity:.4;margin-bottom:10px">📅</div><div>No appointments</div></div>';
+    return;
+  }
+  el.innerHTML = active.map(function(a){
+    var isToday = a.date === today;
+    var isPast = a.date < today;
+    var borderColor = isToday ? 'var(--red)' : isPast ? 'var(--border)' : 'var(--accent)';
+    var dateLabel = isToday ? '🔴 TODAY' : isPast ? '⚪ '+a.dateStr : '🟡 '+a.dateStr;
+    var timeStr = a.time ? ' · '+a.time : '';
+    return '<div style="background:var(--card);border:1px solid '+borderColor+';border-radius:12px;padding:14px;margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+      +'<div style="font-size:13px;font-weight:700;color:'+borderColor+'">'+dateLabel+timeStr+'</div>'
+      +'<button data-aid="'+a.id+'" onclick="doneAppt(this.dataset.aid)" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--sub);font-size:11px;cursor:pointer;font-family:var(--sans)">✓ Done</button>'
+      +'</div>'
+      +'<div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:4px">'+a.tech+'</div>'
+      +'<div style="font-size:11px;color:var(--sub);font-family:var(--mono);margin-bottom:10px">'+a.source+'</div>'
+      +'<div style="font-size:12px;color:var(--sub);font-family:var(--mono);white-space:pre-wrap;margin-bottom:10px;background:var(--card2);padding:8px;border-radius:6px;max-height:80px;overflow:hidden">'+a.rawText.slice(0,200)+'</div>'
+      +'<button data-aid="'+a.id+'" onclick="sendReminder(this.dataset.aid)" style="width:100%;padding:9px;border-radius:8px;border:none;background:'+(isToday?'var(--red)':'var(--accent)')+';color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)">📤 Copy Reminder for '+a.tech+'</button>'
+      +'</div>';
+  }).join('');
+}
+
+function doneAppt(id){
+  var a = appts.find(function(x){ return x.id===id; });
+  if(a){ a.done=true; saveAppts(); updateApptBadge(); renderAppts(); showToast('Appointment done ✅'); }
+}
+
 // ── ADD / REMOVE TECH ────────────────────────────────────────
 function openAddTech(){
   document.getElementById('newTechName').value = '';
@@ -1125,6 +1325,28 @@ function setMsgType(type, btn){
 }
 
 document.getElementById('learnCount').textContent=learn.length;
+updateApptBadge();
+// Show today's alert on New Lead tab
+var todayCheck = lvNow().toISOString().slice(0,10);
+var todayAppts = appts.filter(function(a){ return !a.done && a.date===todayCheck; });
+if(todayAppts.length){
+  var nb = document.getElementById('tab-new');
+  if(nb){
+    var alertDiv = document.createElement('div');
+    alertDiv.className = 'appt-alert visible';
+    alertDiv.style.marginBottom = '14px';
+    var alertTitle = document.createElement('div');
+    alertTitle.style.cssText = 'font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px';
+    alertTitle.textContent = '⏰ ' + todayAppts.length + ' appointment' + (todayAppts.length>1?'s':'') + ' today';
+    var alertBtn = document.createElement('button');
+    alertBtn.style.cssText = 'padding:6px 14px;border-radius:8px;border:none;background:var(--red);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans)';
+    alertBtn.textContent = 'View →';
+    alertBtn.onclick = function(){ switchTab('appts', document.getElementById('apptTab')); };
+    alertDiv.appendChild(alertTitle);
+    alertDiv.appendChild(alertBtn);
+    nb.insertBefore(alertDiv, nb.firstChild);
+  }
+}
 </script>
 </body>
 </html>
