@@ -746,11 +746,13 @@ function forward(msgType) {
   const msg = getMsg('fwd');
 
   if(msgType==='closure'){
-    const j=jobs.find(j=>j.source===src&&j.status==='dispatched');
-    if(j){
-      j.status='done'; j.closureSent=true;
-      const t=TECHS.find(x=>x.name===j.tech);
-      if(t){t.status='free';t.currentJob=null;}
+    var matched = findMatchingJob(msg, src);
+    if(matched){
+      matched.status='done'; matched.closureSent=true;
+      var ct=TECHS.find(function(x){ return x.name===matched.tech; });
+      if(ct){ ct.status='free'; ct.currentJob=null; }
+    } else {
+      showToast('⚠️ No matching job found — close manually in Jobs tab');
     }
   }
   learn.push({ts:Date.now(),action:msgType==='closure'?'closure_sent':'update_sent',src,msg});
@@ -1042,6 +1044,58 @@ function renderStats(){
   document.getElementById('techStats').innerHTML=sorted.length
     ?sorted.map(([n,c])=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:15px;font-weight:600">${n}</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--gold)">${c}</div></div>`).join('')
     :'<div class="empty"><div>No data yet</div></div>';
+}
+
+// ── SMART JOB MATCHING ────────────────────────────────────────
+function extractIdentifiers(text) {
+  // Extract phone numbers and address numbers from text
+  var phones = [];
+  var phoneMatches = text.match(/\d{10}|\d{3}[-\s]\d{3}[-\s]\d{4}/g) || [];
+  phoneMatches.forEach(function(p){ phones.push(p.replace(/\D/g,'')); });
+
+  // Extract street number (first number in address-like pattern)
+  var addrNum = text.match(/(\d+)\s+[A-Za-z]/);
+  var streetNum = addrNum ? addrNum[1] : null;
+
+  return { phones: phones, streetNum: streetNum };
+}
+
+function findMatchingJob(closureText, src) {
+  var active = jobs.filter(function(j){ return j.status==='dispatched'; });
+  if(!active.length) return null;
+
+  var closureIds = extractIdentifiers(closureText);
+
+  // Score each active job by how many identifiers match
+  var best = null;
+  var bestScore = 0;
+
+  active.forEach(function(j) {
+    var score = 0;
+    var jobIds = extractIdentifiers(j.rawLead || '');
+
+    // Phone match - strongest signal
+    closureIds.phones.forEach(function(cp) {
+      if(jobIds.phones.indexOf(cp) >= 0) score += 10;
+    });
+
+    // Street number match
+    if(closureIds.streetNum && jobIds.streetNum === closureIds.streetNum) score += 5;
+
+    // Same supplier - bonus
+    if(j.source === src) score += 2;
+
+    if(score > bestScore) {
+      bestScore = score;
+      best = j;
+    }
+  });
+
+  // Only match if we have a strong signal (phone match = score 10+)
+  if(bestScore >= 10) return best;
+
+  // No strong match found - do NOT close anything
+  return null;
 }
 
 // ── EDIT JOB ──────────────────────────────────────────────────
